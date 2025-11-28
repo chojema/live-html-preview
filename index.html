@@ -73,7 +73,8 @@
       white-space: nowrap;
     }
 
-    button{
+    /* 버튼과 링크 버튼 공통 스타일 */
+    button, .link-btn {
       appearance:none;
       border:1px solid var(--border);
       background:rgba(255,255,255,.04);
@@ -83,10 +84,14 @@
       font-size:12px;
       cursor:pointer;
       transition:transform .05s ease, background .15s ease, border-color .15s ease;
+      text-decoration: none; /* 링크 밑줄 제거 */
+      display: inline-flex;
+      align-items: center;
+      line-height: normal;
     }
-    button:hover{ background:rgba(255,255,255,.07); border-color:rgba(255,255,255,.16); }
-    button:active{ transform:translateY(1px); }
-    button:focus-visible{ outline:2px solid var(--focus); outline-offset:2px; }
+    button:hover, .link-btn:hover{ background:rgba(255,255,255,.07); border-color:rgba(255,255,255,.16); }
+    button:active, .link-btn:active{ transform:translateY(1px); }
+    button:focus-visible, .link-btn:focus-visible{ outline:2px solid var(--focus); outline-offset:2px; }
 
     .brandlink{
       display:inline-flex;
@@ -176,8 +181,8 @@
       color:var(--text);
       font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 
-      /* 요청: 지금보다 2pt 더 크게 */
-      font-size: 15pt;
+      /* 요청: 기존 15pt에서 2pt 줄임 -> 13pt */
+      font-size: 13pt;
 
       line-height:1.45;
       tab-size:2;
@@ -250,10 +255,12 @@
   <header>
     <div class="left">
       <h1>Chojema Live HTML Preview</h1>
-      <div class="hint">좌측에 HTML을 입력하면 우측에 실시간 렌더링됩니다.</div>
+      <div class="hint">왼쪽 창에 HTML을 입력하면 오른쪽 창에 실시간 렌더링됩니다.</div>
     </div>
 
     <div class="actions">
+      <a class="link-btn" href="https://chojema.github.io/chojema-image-autotrimmer/" target="_blank">이미지 자동 트림(외부 링크)</a>
+      
       <button id="btnExample" type="button">예제</button>
       <button id="btnClear" type="button">초기화</button>
       <button id="btnDownload" type="button">HTML 다운로드</button>
@@ -376,12 +383,27 @@
       input.focus();
     });
 
+    // 요청: 파일명에 현재 날짜/시간 포함
     btnDownload.addEventListener("click", () => {
       const blob = new Blob([input.value], { type: "text/html;charset=utf-8" });
       const url = URL.createObjectURL(blob);
+      
+      const now = new Date();
+      // 날짜 포맷팅 헬퍼 함수
+      const pad = (n) => String(n).padStart(2, "0");
+      const dateStr = 
+        now.getFullYear() + "-" +
+        pad(now.getMonth() + 1) + "-" +
+        pad(now.getDate()) + "_" +
+        pad(now.getHours()) + "-" +
+        pad(now.getMinutes()) + "-" +
+        pad(now.getSeconds());
+
       const a = document.createElement("a");
       a.href = url;
-      a.download = "preview.html";
+      // 예: HTML-Infographic-2025-11-29_23-10-34.html
+      a.download = `HTML-Infographic-${dateStr}.html`;
+      
       document.body.appendChild(a);
       a.click();
       a.remove();
