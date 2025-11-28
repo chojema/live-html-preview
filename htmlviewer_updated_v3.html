@@ -1,0 +1,519 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Chojema Live HTML Preview</title>
+  <style>
+    :root{
+      --bg:#0b0f14;
+      --panel:#0f1620;
+      --border:rgba(255,255,255,.10);
+      --text:rgba(255,255,255,.92);
+      --muted:rgba(255,255,255,.65);
+      --focus:rgba(99,179,237,.9);
+
+      /* Split ratios (percentage) */
+      --split: 15;   /* desktop left width % (요청: 최초 15%) */
+      --vsplit: 50;  /* mobile top height  % */
+    }
+
+    *{ box-sizing:border-box; }
+
+    body{
+      margin:0;
+      background:var(--bg);
+      color:var(--text);
+      font-family:ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans KR", sans-serif;
+      height:100vh;
+      overflow:hidden;
+    }
+
+    header{
+      height:52px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      padding:0 14px;
+      border-bottom:1px solid var(--border);
+      background:linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+      gap: 12px;
+    }
+
+    header .left{
+      display:flex;
+      align-items:baseline;
+      gap:10px;
+      min-width:0;
+      flex: 1;
+    }
+
+    header h1{
+      font-size:14px;
+      font-weight:650;
+      margin:0;
+      letter-spacing:.2px;
+      white-space: nowrap;
+    }
+
+    header .hint{
+      font-size:12px;
+      color:var(--muted);
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+      min-width: 0;
+    }
+
+    header .actions{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      flex: 0 0 auto;
+      white-space: nowrap;
+    }
+
+    /* 버튼과 링크 버튼 공통 스타일 */
+    button, .link-btn {
+      appearance:none;
+      border:1px solid var(--border);
+      background:rgba(255,255,255,.04);
+      color:var(--text);
+      padding:8px 10px;
+      border-radius:10px;
+      font-size:12px;
+      cursor:pointer;
+      transition:transform .05s ease, background .15s ease, border-color .15s ease;
+      text-decoration: none; /* 링크 밑줄 제거 */
+      display: inline-flex;
+      align-items: center;
+      line-height: normal;
+    }
+    button:hover, .link-btn:hover{ background:rgba(255,255,255,.07); border-color:rgba(255,255,255,.16); }
+    button:active, .link-btn:active{ transform:translateY(1px); }
+    button:focus-visible, .link-btn:focus-visible{ outline:2px solid var(--focus); outline-offset:2px; }
+
+    .brandlink{
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      font-size:12px;
+      color:var(--muted);
+      text-decoration:none;
+      padding:8px 10px;
+      border-radius:10px;
+      border:1px solid transparent;
+      transition: background .15s ease, border-color .15s ease, color .15s ease;
+    }
+    .brandlink:hover{
+      background:rgba(255,255,255,.05);
+      border-color:rgba(255,255,255,.14);
+      color:rgba(255,255,255,.85);
+    }
+    .brandlink:focus-visible{
+      outline:2px solid var(--focus);
+      outline-offset:2px;
+    }
+
+    .wrap{
+      height:calc(100vh - 52px);
+      display:grid;
+      grid-template-columns:
+        minmax(220px, calc(var(--split) * 1%))
+        8px
+        minmax(220px, calc(100% - (var(--split) * 1%)));
+      min-height:0;
+    }
+
+    .pane{
+      display:flex;
+      flex-direction:column;
+      min-width:0;
+      min-height:0;
+    }
+
+    .titlebar{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      padding:10px 12px;
+      border-bottom:1px solid var(--border);
+      background:rgba(255,255,255,.02);
+    }
+
+    .titlebar .title{
+      font-size:12px;
+      color:var(--muted);
+      letter-spacing:.2px;
+    }
+
+    .titlebar .meta{
+      font-size:12px;
+      color:var(--muted);
+      display:flex;
+      align-items:center;
+      gap:10px;
+      white-space:nowrap;
+    }
+
+    .status-dot{
+      width:8px; height:8px;
+      border-radius:999px;
+      background:rgba(34,197,94,.9);
+      box-shadow:0 0 0 3px rgba(34,197,94,.18);
+    }
+
+    .editor{
+      flex:1;
+      min-height:0;
+      padding:0;
+    }
+
+    textarea{
+      width:100%;
+      height:100%;
+      resize:none;
+      border:0;
+      outline:none;
+      padding:12px;
+      background:var(--panel);
+      color:var(--text);
+      font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+
+      /* 요청: 기존 15pt에서 2pt 줄임 -> 13pt */
+      font-size: 13pt;
+
+      line-height:1.45;
+      tab-size:2;
+    }
+    textarea:focus-visible{ outline:2px solid var(--focus); outline-offset:-2px; }
+
+    .preview{
+      flex:1;
+      min-height:0;
+      background:#ffffff;
+      position:relative;
+    }
+
+    iframe{
+      width:100%;
+      height:100%;
+      border:0;
+      background:#ffffff;
+    }
+
+    .divider{
+      background:rgba(255,255,255,.03);
+      border-left:1px solid rgba(255,255,255,.10);
+      border-right:1px solid rgba(0,0,0,.25);
+      cursor:col-resize;
+      position:relative;
+      touch-action:none;
+    }
+    .divider::after{
+      content:"";
+      position:absolute;
+      top:50%;
+      left:50%;
+      width:2px;
+      height:44px;
+      transform:translate(-50%,-50%);
+      background:rgba(255,255,255,.18);
+      border-radius:999px;
+    }
+    .divider:focus-visible{
+      outline:2px solid var(--focus);
+      outline-offset:-2px;
+    }
+
+    @media (max-width: 900px){
+      body{ overflow:auto; }
+      .wrap{
+        height:auto;
+        grid-template-columns:1fr;
+        grid-template-rows:
+          minmax(240px, calc(var(--vsplit) * 1%))
+          8px
+          minmax(240px, calc(100% - (var(--vsplit) * 1%)));
+      }
+      .divider{
+        cursor:row-resize;
+        border-left:0;
+        border-right:0;
+        border-top:1px solid rgba(255,255,255,.10);
+        border-bottom:1px solid rgba(0,0,0,.25);
+      }
+      .divider::after{
+        width:44px;
+        height:2px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="left">
+      <h1>Chojema Live HTML Preview</h1>
+      <div class="hint">좌측에 HTML을 입력하면 우측에 실시간 렌더링됩니다.</div>
+    </div>
+
+    <div class="actions">
+      <a class="link-btn" href="https://chojema.github.io/chojema-image-autotrimmer/" target="_blank">이미지 오토트리머</a>
+      
+      <button id="btnExample" type="button">예제</button>
+      <button id="btnClear" type="button">초기화</button>
+      <button id="btnDownload" type="button">HTML 다운로드</button>
+
+      <a
+        id="brandLink"
+        class="brandlink"
+        href="https://cantips.com"
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="cantips.com을 새 창에서 열기"
+      >
+        Chulwoo Park, <span id="year"></span>
+      </a>
+    </div>
+  </header>
+
+  <div class="wrap" id="wrap">
+    <section class="pane">
+      <div class="titlebar">
+        <div class="title">HTML 입력</div>
+        <div class="meta">
+          <span class="status-dot" aria-hidden="true"></span>
+          <span style="font-size:11px; color: var(--muted);">자동 반영</span>
+        </div>
+      </div>
+      <div class="editor">
+        <textarea id="input" spellcheck="false"></textarea>
+      </div>
+    </section>
+
+    <div
+      class="divider"
+      id="divider"
+      role="separator"
+      aria-orientation="vertical"
+      tabindex="0"
+      title="드래그하여 분할 비율 조정"
+    ></div>
+
+    <section class="pane">
+      <div class="titlebar">
+        <div class="title">미리보기</div>
+        <div class="meta">
+          <span style="font-size:11px; color: var(--muted);">iframe (sandbox 적용)</span>
+        </div>
+      </div>
+      <div class="preview">
+        <iframe
+          id="frame"
+          sandbox="allow-forms allow-modals allow-pointer-lock allow-popups allow-scripts"
+          referrerpolicy="no-referrer"
+          title="preview"
+        ></iframe>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    document.getElementById("year").textContent = String(new Date().getFullYear());
+
+    const DEFAULT_HTML =
+`<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Demo</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans KR", sans-serif; padding: 24px; }
+    .card { max-width: 720px; border: 1px solid #e5e7eb; border-radius: 16px; padding: 18px; box-shadow: 0 10px 25px rgba(0,0,0,.08); }
+    h1 { margin: 0 0 8px; font-size: 22px; }
+    p { margin: 0 0 12px; color: #374151; line-height: 1.5; }
+    button { padding: 10px 12px; border-radius: 12px; border: 1px solid #d1d5db; background: #f9fafb; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>실시간 HTML 미리보기</h1>
+    <p>좌측의 코드를 수정하면 이 화면이 즉시 업데이트됩니다.</p>
+    <button onclick="document.querySelector('p').textContent = '버튼 클릭! (스크립트도 동작)';">
+      클릭해보세요
+    </button>
+  </div>
+</body>
+</html>`;
+
+    const input = document.getElementById("input");
+    const frame = document.getElementById("frame");
+    const btnExample = document.getElementById("btnExample");
+    const btnClear = document.getElementById("btnClear");
+    const btnDownload = document.getElementById("btnDownload");
+
+    const STORAGE_KEY_HTML = "chojema_live_html_preview_code_v1";
+    const STORAGE_KEY_SPLIT = "chojema_live_html_preview_split_v1";
+
+    function render(html){ frame.srcdoc = html; }
+
+    let scheduled = false;
+    function scheduleRender(){
+      if (scheduled) return;
+      scheduled = true;
+      requestAnimationFrame(() => {
+        scheduled = false;
+        const html = input.value;
+        render(html);
+        try { localStorage.setItem(STORAGE_KEY_HTML, html); } catch (_) {}
+      });
+    }
+
+    btnExample.addEventListener("click", () => {
+      input.value = DEFAULT_HTML;
+      scheduleRender();
+      input.focus();
+    });
+
+    btnClear.addEventListener("click", () => {
+      input.value = "";
+      scheduleRender();
+      input.focus();
+    });
+
+    // 요청: 파일명에 현재 날짜/시간 포함
+    btnDownload.addEventListener("click", () => {
+      const blob = new Blob([input.value], { type: "text/html;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      
+      const now = new Date();
+      // 날짜 포맷팅 헬퍼 함수
+      const pad = (n) => String(n).padStart(2, "0");
+      const dateStr = 
+        now.getFullYear() + "-" +
+        pad(now.getMonth() + 1) + "-" +
+        pad(now.getDate()) + "_" +
+        pad(now.getHours()) + "-" +
+        pad(now.getMinutes()) + "-" +
+        pad(now.getSeconds());
+
+      const a = document.createElement("a");
+      a.href = url;
+      // 예: HTML-Infographic-2025-11-29_23-10-34.html
+      a.download = `HTML-Infographic-${dateStr}.html`;
+      
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    });
+
+    input.addEventListener("input", scheduleRender);
+
+    input.addEventListener("keydown", (e) => {
+      const isCmdEnter = (e.key === "Enter") && (e.metaKey || e.ctrlKey);
+      if (isCmdEnter) {
+        e.preventDefault();
+        scheduleRender();
+      }
+
+      if (e.key === "Tab") {
+        e.preventDefault();
+        const start = input.selectionStart;
+        const end = input.selectionEnd;
+        input.value = input.value.slice(0, start) + "  " + input.value.slice(end);
+        input.selectionStart = input.selectionEnd = start + 2;
+        scheduleRender();
+      }
+    });
+
+    const savedHtml = (() => {
+      try { return localStorage.getItem(STORAGE_KEY_HTML); } catch (_) { return null; }
+    })();
+    input.value = (savedHtml && savedHtml.trim().length > 0) ? savedHtml : DEFAULT_HTML;
+    render(input.value);
+
+    const wrap = document.getElementById("wrap");
+    const divider = document.getElementById("divider");
+
+    const mqMobile = window.matchMedia("(max-width: 900px)");
+    const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+
+    function setSplit(pct){
+      document.documentElement.style.setProperty("--split", String(pct));
+      try {
+        const current = JSON.parse(localStorage.getItem(STORAGE_KEY_SPLIT) || "{}");
+        current.split = pct;
+        localStorage.setItem(STORAGE_KEY_SPLIT, JSON.stringify(current));
+      } catch (_) {}
+    }
+
+    function setVSplit(pct){
+      document.documentElement.style.setProperty("--vsplit", String(pct));
+      try {
+        const current = JSON.parse(localStorage.getItem(STORAGE_KEY_SPLIT) || "{}");
+        current.vsplit = pct;
+        localStorage.setItem(STORAGE_KEY_SPLIT, JSON.stringify(current));
+      } catch (_) {}
+    }
+
+    // Restore split: 저장값이 있으면 그 값이 우선됨
+    (() => {
+      try {
+        const saved = JSON.parse(localStorage.getItem(STORAGE_KEY_SPLIT) || "{}");
+        if (typeof saved.split === "number") setSplit(clamp(saved.split, 20, 80));
+        if (typeof saved.vsplit === "number") setVSplit(clamp(saved.vsplit, 20, 80));
+      } catch (_) {}
+    })();
+
+    let dragging = false;
+
+    divider.addEventListener("pointerdown", (e) => {
+      dragging = true;
+      divider.setPointerCapture(e.pointerId);
+    });
+
+    divider.addEventListener("pointermove", (e) => {
+      if (!dragging) return;
+      const rect = wrap.getBoundingClientRect();
+
+      if (mqMobile.matches) {
+        const y = e.clientY - rect.top;
+        const pct = clamp((y / rect.height) * 100, 20, 80);
+        setVSplit(Number(pct.toFixed(2)));
+      } else {
+        const x = e.clientX - rect.left;
+        const pct = clamp((x / rect.width) * 100, 20, 80);
+        setSplit(Number(pct.toFixed(2)));
+      }
+    });
+
+    function stopDrag(){ dragging = false; }
+    divider.addEventListener("pointerup", stopDrag);
+    divider.addEventListener("pointercancel", stopDrag);
+    divider.addEventListener("lostpointercapture", stopDrag);
+
+    divider.addEventListener("keydown", (e) => {
+      const step = e.shiftKey ? 5 : 1;
+
+      if (mqMobile.matches) {
+        const cur = Number(getComputedStyle(document.documentElement).getPropertyValue("--vsplit")) || 50;
+        if (e.key === "ArrowUp") { e.preventDefault(); setVSplit(clamp(cur - step, 20, 80)); }
+        if (e.key === "ArrowDown") { e.preventDefault(); setVSplit(clamp(cur + step, 20, 80)); }
+      } else {
+        const cur = Number(getComputedStyle(document.documentElement).getPropertyValue("--split")) || 50;
+        if (e.key === "ArrowLeft") { e.preventDefault(); setSplit(clamp(cur - step, 20, 80)); }
+        if (e.key === "ArrowRight") { e.preventDefault(); setSplit(clamp(cur + step, 20, 80)); }
+      }
+    });
+
+    function syncAria(){
+      divider.setAttribute("aria-orientation", mqMobile.matches ? "horizontal" : "vertical");
+    }
+    mqMobile.addEventListener?.("change", syncAria);
+    syncAria();
+  </script>
+</body>
+</html>
